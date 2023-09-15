@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import libcst as cst
 import libcst.matchers as m
+from bump_pydantic.codemods.class_def_visitor import ClassDefVisitor
 from libcst.codemod import CodemodContext, VisitorBasedCodemodCommand
 from libcst.metadata import FullyQualifiedNameProvider, QualifiedName
-
-from bump_pydantic.codemods.class_def_visitor import ClassDefVisitor
 
 
 class AddDefaultNoneCommand(VisitorBasedCodemodCommand):
@@ -86,10 +85,16 @@ class AddDefaultNoneCommand(VisitorBasedCodemodCommand):
                 assert isinstance(updated_node.value, cst.Call)
                 if updated_node.value.args:
                     arg = updated_node.value.args[0]
-                    if (arg.keyword is None or arg.keyword.value == "default") and m.matches(arg.value, m.Ellipsis()):
+                    # if (arg.keyword is None or arg.keyword.value == "default") and m.matches(arg.value, m.Ellipsis()):
+                    #     updated_node = updated_node.with_changes(
+                    #         value=updated_node.value.with_changes(
+                    #             args=[arg.with_changes(value=cst.Name("None")), *updated_node.value.args[1:]]
+                    #         )
+                    #     )
+                    if arg.keyword:
                         updated_node = updated_node.with_changes(
                             value=updated_node.value.with_changes(
-                                args=[arg.with_changes(value=cst.Name("None")), *updated_node.value.args[1:]]
+                                args=[cst.Arg(value=cst.Name("None")), *updated_node.value.args]
                             )
                         )
                 # This is the case where `Field` is called without any arguments e.g. `Field()`.
