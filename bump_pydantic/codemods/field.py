@@ -9,6 +9,7 @@ RENAMED_KEYWORDS = {
     "min_items": "min_length",
     "max_items": "max_length",
     "allow_mutation": "frozen",
+    "example": "examples",
     "regex": "pattern",
     # NOTE: This is only for BaseSettings.
     "env": "validation_alias",
@@ -43,9 +44,7 @@ IMPORT_FIELD = m.Module(
     ]
 )
 
-ANN_ASSIGN_WITH_FIELD = m.AnnAssign(
-    value=m.Call(func=m.Name("Field")),
-) | m.AnnAssign(
+ANN_ASSIGN_WITH_FIELD = m.AnnAssign(value=m.Call(func=m.Name("Field")),) | m.AnnAssign(
     annotation=m.Annotation(
         annotation=m.Subscript(
             slice=[
@@ -116,11 +115,14 @@ class FieldCodemod(VisitorBasedCodemodCommand):
                 keyword = RENAMED_KEYWORDS.get(arg.keyword.value, arg.keyword.value)  # type: ignore
                 value = arg.value
                 # The `allow_mutation` keyword argument is a special case. It's the negative of `frozen`.
-                if arg.keyword and arg.keyword.value == "allow_mutation":
-                    if m.matches(arg.value, m.Name(value="False")):
-                        value = cst.Name("True")
-                    elif m.matches(arg.value, m.Name(value="True")):
-                        value = cst.Name("False")
+                if arg.keyword:
+                    if arg.keyword.value == "allow_mutation":
+                        if m.matches(arg.value, m.Name(value="False")):
+                            value = cst.Name("True")
+                        elif m.matches(arg.value, m.Name(value="True")):
+                            value = cst.Name("False")
+                    if arg.keyword.value == "example":
+                        value = cst.List([cst.Element(arg.value)])
                 new_arg = arg.with_changes(keyword=arg.keyword.with_changes(value=keyword), value=value)  # type: ignore
                 new_args.append(new_arg)  # type: ignore
             else:
